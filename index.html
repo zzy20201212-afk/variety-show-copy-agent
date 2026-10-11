@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>综艺热搜文案 Agent · AI 工作流演示</title>
+<style>
+  :root {
+    --bg:#f5f6fa; --card:#fff; --ink:#1a1a1a; --sub:#888;
+    --accent:#ff4d6a; --accent2:#ff7a4d; --line:#eee; --chip:#f2f3f7;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.7; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:760px; margin:0 auto; padding:24px 16px 90px; }
+
+  header { padding:20px 4px 8px; }
+  .badge { display:inline-block; font-size:12px; font-weight:600; background:linear-gradient(135deg,var(--accent),var(--accent2));
+    color:#fff; padding:3px 10px; border-radius:20px; letter-spacing:.5px; }
+  h1 { font-size:26px; font-weight:800; margin:12px 0 4px; }
+  .sub { color:var(--sub); font-size:14px; }
+
+  .tabs { display:flex; gap:6px; background:var(--card); border-radius:14px; padding:6px; margin:20px 0 16px;
+    box-shadow:0 2px 12px rgba(0,0,0,.04); position:sticky; top:8px; z-index:10; }
+  .tab { flex:1; text-align:center; padding:10px 4px; border-radius:10px; font-size:13.5px; color:var(--sub);
+    cursor:pointer; user-select:none; transition:all .2s; white-space:nowrap; }
+  .tab.on { background:var(--ink); color:#fff; font-weight:600; }
+
+  .panel { display:none; animation:fade .25s ease; }
+  .panel.on { display:block; }
+  @keyframes fade { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+
+  .card { background:var(--card); border-radius:16px; padding:22px; box-shadow:0 2px 12px rgba(0,0,0,.04); margin-bottom:16px; }
+  .card h2 { font-size:16px; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+  .card h2 .dot { width:8px; height:8px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--accent2)); }
+
+  label { display:block; font-size:13px; font-weight:600; color:#444; margin:14px 0 8px; }
+  input[type=text], input[type=number], textarea {
+    width:100%; padding:11px 12px; border:1.5px solid var(--line); border-radius:10px; font-size:14px;
+    font-family:inherit; background:#fafbfc; color:var(--ink);
+  }
+  textarea { min-height:96px; resize:vertical; line-height:1.6; }
+  .row { display:flex; gap:12px; }
+  .row > div { flex:1; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip { padding:8px 14px; border-radius:20px; background:var(--chip); font-size:13px; cursor:pointer;
+    user-select:none; transition:all .15s; border:1.5px solid transparent; }
+  .chip.on { background:#fff0f2; border-color:var(--accent); color:var(--accent); font-weight:600; }
+  .chip .d { display:block; font-size:11px; color:var(--sub); font-weight:400; }
+  .chip.on .d { color:#ff8fa0; }
+
+  .search-row { display:flex; gap:8px; }
+  .search-row input { flex:1; }
+  .btn { display:inline-block; padding:11px 18px; border:none; border-radius:12px; background:linear-gradient(135deg,var(--accent),var(--accent2));
+    color:#fff; font-size:14px; font-weight:700; cursor:pointer; letter-spacing:.5px; transition:opacity .2s; white-space:nowrap; }
+  .btn.ghost { background:#eef0f6; color:#555; }
+  .btn.big { width:100%; margin-top:18px; padding:14px; border-radius:24px; font-size:16px; letter-spacing:1px; }
+  .btn:disabled { opacity:.6; cursor:default; }
+
+  .info-box { margin-top:10px; background:#f7f8ff; border:1.5px dashed #c7cdf5; border-radius:12px; padding:14px; font-size:13px; }
+  .info-box .k { font-weight:700; color:#4a55c0; }
+  .info-box .row2 { display:flex; gap:16px; flex-wrap:wrap; margin-top:6px; }
+  .info-box .row2 span { color:#555; }
+  .info-box .note { color:#999; font-size:12px; margin-top:6px; }
+
+  .section-title { font-size:13px; font-weight:700; color:#444; margin:4px 0 8px; display:flex; align-items:center; gap:6px; }
+  .section-title::before { content:''; width:3px; height:14px; background:linear-gradient(180deg,var(--accent),var(--accent2)); border-radius:2px; }
+  pre { background:#1e1e28; color:#e6e6ef; border-radius:12px; padding:16px; font-size:12.5px; line-height:1.7;
+    overflow-x:auto; white-space:pre-wrap; word-break:break-word; font-family:"SF Mono",Menlo,Consolas,monospace; }
+  .prompt-box { max-height:340px; overflow-y:auto; }
+
+  .result { border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:10px; position:relative; }
+  .result .idx { font-size:12px; font-weight:700; color:var(--accent); margin-bottom:4px; }
+  .result p { font-size:14px; }
+  .copy { position:absolute; top:12px; right:14px; font-size:12px; color:var(--sub); cursor:pointer; }
+  .copy:hover { color:var(--accent); }
+
+  .flow { display:flex; flex-direction:column; }
+  .node { background:#fafbfc; border:1.5px solid var(--line); border-radius:12px; padding:12px 16px; text-align:center; }
+  .node .n { font-weight:700; font-size:14px; } .node .t { font-size:12px; color:var(--sub); margin-top:2px; }
+  .node.hl { border-color:var(--accent); background:#fff0f2; }
+  .arrow { text-align:center; color:var(--sub); font-size:18px; line-height:1; padding:4px 0; }
+
+  ul.points { padding-left:18px; } ul.points li { margin-bottom:6px; font-size:14px; }
+
+  .kb-item { border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:10px; position:relative; }
+  .kb-item .name { font-weight:700; font-size:14px; }
+  .kb-item .meta { font-size:12px; color:var(--sub); margin-top:2px; }
+  .del { position:absolute; top:10px; right:14px; font-size:12px; color:#e0a0a8; cursor:pointer; }
+  .del:hover { color:var(--accent); }
+  .kb-form { background:#fafbfc; border-radius:12px; padding:14px; margin-top:12px; }
+  .kb-form input, .kb-form textarea { margin-bottom:8px; background:#fff; }
+  .kb-form select { width:100%; padding:10px 12px; border:1.5px solid var(--line); border-radius:10px; font-size:14px; background:#fff; margin-bottom:8px; }
+
+  .hint { font-size:12px; color:#aaa; text-align:center; margin-top:8px; }
+  footer { text-align:center; color:#bbb; font-size:12px; margin-top:30px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <span class="badge">AI Agent 作品 · 工作流演示</span>
+    <h1>综艺热搜文案生成 Agent</h1>
+    <div class="sub">输入剧情与参数 → 联网搜索学习 → 多风格批量产出微博文案</div>
+  </header>
+
+  <nav class="tabs">
+    <div class="tab on" data-t="demo">演示</div>
+    <div class="tab" data-t="kb">知识库管理</div>
+    <div class="tab" data-t="arch">架构设计</div>
+    <div class="tab" data-t="prompt">提示词设计</div>
+  </nav>
+
+  <!-- ============ 演示 ============ -->
+  <section class="panel on" id="demo">
+    <div class="card">
+      <h2><span class="dot"></span>配置生成参数</h2>
+
+      <label>① 综艺名称（自由输入）</label>
+      <div class="search-row">
+        <input type="text" id="show" placeholder="例：这是我的西游2 / 乘风破浪 / 奔跑吧…">
+        <button class="btn ghost" id="searchBtn">🔍 搜索学习</button>
+      </div>
+      <div id="searchResult"></div>
+
+      <label>② 话题词（结尾附带的话题）</label>
+      <input type="text" id="topic" placeholder="例：邵兵说自己是上古老登（留空则只带综艺话题）">
+
+      <label>③ 文案方向（账号人设，可在「知识库管理」补充）</label>
+      <div class="chips" id="direction"></div>
+
+      <div class="row">
+        <div>
+          <label>④ 内容类型</label>
+          <div class="chips" id="ctype">
+            <div class="chip on" data-v="post">贴文</div>
+            <div class="chip" data-v="comment">评论</div>
+          </div>
+        </div>
+        <div>
+          <label>⑤ 字数要求（直接输入）</label>
+          <input type="number" id="words" value="120" min="10" max="500"> <span style="font-size:12px;color:#999;">字</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>⑥ 产出数量（条）</label>
+          <input type="number" id="count" value="12" min="1" max="50"> <span style="font-size:12px;color:#999;">条</span>
+        </div>
+      </div>
+
+      <label>⑦ 剧情内容 / 名场面描述</label>
+      <textarea id="content" placeholder="例：邵兵在早餐时间自嘲是“上古老登”，引发跨代际反差热议"></textarea>
+
+      <button class="btn big" id="run">生成文案</button>
+    </div>
+
+    <div class="card" id="promptCard" style="display:none;">
+      <div class="section-title">Agent 实际构造的提示词（内部逻辑可视）</div>
+      <pre class="prompt-box" id="promptPreview"></pre>
+    </div>
+
+    <div class="card" id="resultCard" style="display:none;">
+      <div class="section-title">生成结果</div>
+      <div id="results"></div>
+    </div>
+
+    <p class="hint">演示版内置样式模板引擎，展示 Agent 完整链路；生产环境该环节由大模型 API + 联网搜索执行。</p>
+  </section>
+
+  <!-- ============ 知识库管理 ============ -->
+  <section class="panel" id="kb">
+    <div class="card">
+      <h2><span class="dot"></span>综艺信息库（可补充 / 删除，本地持久化）</h2>
+      <div id="showList"></div>
+      <div class="kb-form">
+        <div class="section-title">＋ 新增综艺</div>
+        <input type="text" id="newShowName" placeholder="综艺名称（必填）">
+        <input type="text" id="newShowPlatform" placeholder="播出平台">
+        <input type="text" id="newShowType" placeholder="节目类型">
+        <input type="text" id="newShowCast" placeholder="常驻嘉宾">
+        <textarea id="newShowFeature" placeholder="节目特色 / 调性" style="min-height:56px;"></textarea>
+        <button class="btn" id="addShow">保存到知识库</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="dot"></span>人设风格库（可补充 / 删除，本地持久化）</h2>
+      <div id="styleList"></div>
+      <div class="kb-form">
+        <div class="section-title">＋ 新增人设</div>
+        <input type="text" id="newStyleName" placeholder="人设名称，如：官方号 / 吃瓜群众">
+        <input type="text" id="newStyleDesc" placeholder="一句话描述，如：台网矩阵、官方正式">
+        <textarea id="newStyleExample" placeholder="示例文案（1 条即可，作为 few-shot）" style="min-height:56px;"></textarea>
+        <select id="newStyleBase">
+          <option value="host">基础语气：主持人</option>
+          <option value="redv">基础语气：红V（情绪外放）</option>
+          <option value="bluev" selected>基础语气：蓝V（正式克制）</option>
+          <option value="suren">基础语气：素人（口语真实）</option>
+        </select>
+        <button class="btn" id="addStyle">保存到知识库</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 架构 ============ -->
+  <section class="panel" id="arch">
+    <div class="card">
+      <h2><span class="dot"></span>工作流架构</h2>
+      <div class="flow">
+        <div class="node"><div class="n">① 用户输入</div><div class="t">综艺名 · 话题词 · 方向 · 类型 · 字数 · 数量 · 剧情</div></div>
+        <div class="arrow">↓</div>
+        <div class="node hl"><div class="n">② 联网搜索学习</div><div class="t">按综艺名检索节目背景 → 存入知识库</div></div>
+        <div class="arrow">↓</div>
+        <div class="node hl"><div class="n">③ 结构化提示词构造</div><div class="t">角色 + 风格库 + 动态话题词 + 约束 + 格式</div></div>
+        <div class="arrow">↓</div>
+        <div class="node"><div class="n">④ 大模型调用</div><div class="t">LLM API · 温度 / 长度控制</div></div>
+        <div class="arrow">↓</div>
+        <div class="node"><div class="n">⑤ 结果解析 &amp; 格式化</div><div class="t">按「文案N：」切分 · 清洗 · 结构化返回</div></div>
+        <div class="arrow">↓</div>
+        <div class="node"><div class="n">⑥ 输出</div><div class="t">批量文案 · 结尾附 #综艺名# #话题词#</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2><span class="dot"></span>关键技术点</h2>
+      <ul class="points">
+        <li><b>联网搜索增强</b>：综艺名自由输入，Agent 先联网检索节目背景补全知识库，再进入生成环节。</li>
+        <li><b>动态话题词</b>：结尾话题由「综艺名 + 用户话题词」动态拼装，不写死。</li>
+        <li><b>可扩展知识库</b>：综艺 / 人设均可增删，新增人设只需绑定基础语气 + 一条示例，生成逻辑零改动。</li>
+        <li><b>结构化输出</b>：约定「文案N：」格式，后端正则切分，保证可程序化处理。</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ 提示词 ============ -->
+  <section class="panel" id="prompt">
+    <div class="card">
+      <h2><span class="dot"></span>Agent 系统提示词（节选）</h2>
+      <pre># 角色
+你是资深综艺宣发文案专家，擅长为综艺撰写微博热搜文案。
+
+# 输入参数
+1. 综艺名称(自由输入)  2. 话题词(可选)
+3. 文案方向(主持人/红V/蓝V/素人，可扩展)
+4. 内容类型(贴文/评论)  5. 字数(直接输入)  6. 数量  7. 剧情
+
+# 流程
+1. 若知识库无该综艺信息，先联网搜索节目背景(平台/类型/常驻/特色)
+2. 按所选方向调用对应风格库(关键词 + 真实示例 few-shot)
+3. 生成文案
+
+# 写作规则
+1. 每条切入角度不同、不重复
+2. 严格贴合所选方向的语言风格
+3. 口语化、网感强，避免 AI 翻译腔与营销感
+4. 结尾统一附带话题：#综艺名# + #用户话题词#
+
+# 输出格式
+每条用「文案1：」「文案2：」…依次标注，不输出多余内容</pre>
+    </div>
+    <div class="card">
+      <h2><span class="dot"></span>风格库如何「喂」给模型</h2>
+      <div class="kv" style="font-size:14px;">
+        <p style="margin-bottom:10px;">每个「账号人设」绑定：<b>基础语气 + 风格关键词 + 真实示例文案</b>。生成时按所选方向，把对应示例作为 few-shot 拼进提示词，让模型模仿真实爆款话术。</p>
+        <p><span style="display:inline-block;font-size:11px;background:var(--chip);color:#666;border-radius:6px;padding:1px 8px;margin-right:4px;">主持人</span><span style="display:inline-block;font-size:11px;background:var(--chip);color:#666;border-radius:6px;padding:1px 8px;margin-right:4px;">红V</span><span style="display:inline-block;font-size:11px;background:var(--chip);color:#666;border-radius:6px;padding:1px 8px;margin-right:4px;">蓝V</span><span style="display:inline-block;font-size:11px;background:var(--chip);color:#666;border-radius:6px;padding:1px 8px;">素人</span></p>
+      </div>
+    </div>
+  </section>
+
+  <footer>综艺热搜文案 Agent · 自建 AI 工作流作品</footer>
+</div>
+
+<script>
+// ================= 存储 =================
+function load(key, def){ try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch(e){ return def; } }
+function save(key, val){ try { localStorage.setItem(key, JSON.stringify(val)); } catch(e){} }
+
+// ================= 默认数据 =================
+const DEFAULT_SHOWS = [
+  { name:'这是我的西游2', platform:'优酷', type:'户外真人秀', cast:'时代少年团、于洋、林更新、邵兵、苏醒', feature:'跨代际反差萌，主题「从修行到修心」' },
+  { name:'乘风破浪', platform:'芒果TV', type:'女性音乐竞演', cast:'那英、宁静等', feature:'舞台竞演，主打「女性力量」' }
+];
+const DEFAULT_STYLES = [
+  { id:'host', name:'主持人', desc:'口播引导感', base:'host', example:'来，把镜头给到名场面……这波操作真的服气' },
+  { id:'redv', name:'红V', desc:'认证个人号/粉丝大号', base:'redv', example:'啊啊啊啊磕死我了，这也太绝了吧！！！' },
+  { id:'bluev', name:'蓝V', desc:'官号/媒体号', base:'bluev', example:'路透镜头里，这一幕细节值得反复品' },
+  { id:'suren', name:'素人', desc:'普通网友', base:'suren', example:'笑死我了哈哈哈哈，这段太好笑了' }
+];
+
+let shows = load('shows', DEFAULT_SHOWS);
+let styles = load('styles', DEFAULT_STYLES);
+
+// ================= 状态 =================
+let direction = 'bluev', ctype = 'post';
+
+// ================= 生成模板（基础语气，不含话题词） =================
+const FRAMES = {
+  host: [
+    (c)=>`来，把镜头给到名场面——${c}。这波操作，主持人我先说一句：真的服气。`,
+    (c)=>`说到${c}，现场氛围是真的顶，主持人看了都想递麦。`,
+    (c)=>`${c}，这一幕已经预定本期名场面，想知道后续？正片见分晓～`,
+    (c)=>`现场还原一下：${c}。就这临场反应，真的可以。`,
+    (c)=>`别眨眼，重点来了——${c}，细节全在表情里，建议反复观看。`,
+    (c)=>`${c}，全场直接沸腾。做主持人的我表示：这期稳了！`
+  ],
+  redv: [
+    (c)=>`啊啊啊啊啊谁懂啊！！${c}我真的会谢，这也太绝了吧！！！`,
+    (c)=>`不是我说，${c}这段我反复拉了五遍，每一遍都能笑出声，谁还没看我真的会哭🥹`,
+    (c)=>`救命🆘 ${c}！！我的快乐都是他们给的，这一期直接封神好吗！`,
+    (c)=>`讲真，${c}这种名场面不上一上热搜我是不同意的，都给我冲！！`,
+    (c)=>`${c}……我人没了，这波我真的站了，太会了！`,
+    (c)=>`谁懂啊家人们，${c}这段我已经截图当屏保了，绝了绝了！`
+  ],
+  bluev: [
+    (c)=>`路透镜头里，${c}。细节值得反复品，每一帧都是名场面。`,
+    (c)=>`${c}。客观说一句，这波现场的化学反应确实拉满。`,
+    (c)=>`一个值得注意的细节：${c}。这种自然流露的综艺感，比任何剧本都好看。`,
+    (c)=>`${c}，这一幕正在悄然发生，把笑声撒满沿途。`,
+    (c)=>`现场直击：${c}。团魂不是挂在嘴上的，是每一个瞬间的行动。`,
+    (c)=>`${c}。从「修行」到「修心」，这趟旅程才刚刚开始。`
+  ],
+  suren: [
+    (c)=>`笑死我了哈哈哈哈 ${c} 我正在吃饭差点喷出来 谁懂啊`,
+    (c)=>`说真的 ${c} 这段太好笑了 建议反复观看`,
+    (c)=>`${c} 哈哈哈哈 这波我直接爱了 也太有意思了吧`,
+    (c)=>`不是 ${c} 这个真的有点顶 我已经分享给我朋友了`,
+    (c)=>`哈哈哈哈哈 ${c} 好真实 像极了我自己`,
+    (c)=>`卧槽 ${c} 这个名场面我可以看一年`
+  ]
+};
+
+// ================= Tab 切换 =================
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick = ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+    document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));
+    t.classList.add('on');
+    document.getElementById(t.dataset.t).classList.add('on');
+  };
+});
+
+function bindChips(id, cb){
+  document.getElementById(id).querySelectorAll('.chip').forEach(c=>{
+    c.onclick = ()=>{
+      document.getElementById(id).querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
+      c.classList.add('on');
+      cb(c.dataset.v);
+    };
+  });
+}
+bindChips('ctype', v=> ctype = v);
+
+// ================= 渲染方向 chips =================
+function renderDirections(){
+  const box = document.getElementById('direction');
+  box.innerHTML = styles.map(s=>
+    `<div class="chip ${s.id===direction?'on':''}" data-id="${s.id}">${s.name}<span class="d">${s.desc}</span></div>`
+  ).join('');
+  box.querySelectorAll('.chip').forEach(c=>{
+    c.onclick = ()=>{ direction = c.dataset.id; renderDirections(); };
+  });
+}
+
+// ================= 搜索学习 =================
+document.getElementById('searchBtn').onclick = ()=>{
+  const name = document.getElementById('show').value.trim();
+  const box = document.getElementById('searchResult');
+  if(!name){ box.innerHTML = '<div class="info-box" style="border-color:#f0c0c0;color:#c55;">请先输入综艺名称</div>'; return; }
+
+  box.innerHTML = '<div class="info-box">🔍 正在联网搜索「'+name+'」的节目信息…</div>';
+  setTimeout(()=>{
+    const found = shows.find(s=>s.name===name);
+    if(found){
+      box.innerHTML = `<div class="info-box"><span class="k">已学习到「${found.name}」</span>
+        <div class="row2"><span>平台：${found.platform||'—'}</span><span>类型：${found.type||'—'}</span><span>常驻：${found.cast||'—'}</span></div>
+        <div style="margin-top:4px;color:#555;">特色：${found.feature||'—'}</div>
+        <div class="note">来源：本地知识库</div></div>`;
+    } else {
+      box.innerHTML = `<div class="info-box"><span class="k">未命中本地知识库，已发起联网搜索学习（演示版为模拟）</span>
+        <div class="note">生产环境：调用搜索工具 + LLM 抽取节目背景，自动写入知识库。</div>
+        <div class="note" style="color:#4a55c0;">你可在下方「知识库管理」页补充该综艺信息，之后生成即可复用。</div></div>`;
+    }
+  }, 600);
+};
+
+// ================= 生成 =================
+document.getElementById('run').onclick = ()=>{
+  const showName = document.getElementById('show').value.trim();
+  const topic = document.getElementById('topic').value.trim();
+  const content = document.getElementById('content').value.trim();
+  const words = parseInt(document.getElementById('words').value, 10) || 120;
+  const count = parseInt(document.getElementById('count').value, 10) || 12;
+
+  if(!showName){ alert('请先输入综艺名称'); return; }
+  if(!content){ alert('请先填写剧情内容'); return; }
+
+  const style = styles.find(s=>s.id===direction) || styles[0];
+  const typeText = ctype==='post' ? '贴文（微博正文）' : '评论（评论区留言）';
+  const tags = `#${showName}#` + (topic ? ` #${topic}#` : '');
+
+  // 1) 提示词预览
+  const prompt = `[系统] 你是资深综艺宣发文案专家…（完整规则见「提示词设计」页）
+
+[用户消息]
+为综艺《${showName}》撰写 ${count} 条${typeText}：
+- 账号人设：${style.name}（${style.desc}）
+- 参考风格示例：${style.example}
+- 字数要求：${words} 字
+- 剧情内容：${content}
+- 要求：每条角度不重复、贴合${style.name}风格、结尾统一带话题「${tags}」，按「文案N：」格式输出`;
+  document.getElementById('promptPreview').textContent = prompt;
+  document.getElementById('promptCard').style.display = 'block';
+
+  // 2) 生成结果
+  const frames = FRAMES[style.base] || FRAMES.suren;
+  const html = [];
+  for(let i=0;i<count;i++){
+    const f = frames[i % frames.length];
+    html.push(`<div class="result"><span class="copy" data-i="${i}">复制</span><div class="idx">文案${i+1}</div><p>${f(content)} ${tags}</p></div>`);
+  }
+  document.getElementById('results').innerHTML = html.join('');
+  document.getElementById('resultCard').style.display = 'block';
+  document.getElementById('resultCard').scrollIntoView({behavior:'smooth'});
+
+  document.querySelectorAll('#results .copy').forEach(b=>{
+    b.onclick = ()=>{
+      const text = b.closest('.result').querySelector('p').textContent;
+      navigator.clipboard.writeText(text).then(()=>{ b.textContent='已复制'; setTimeout(()=>b.textContent='复制',1200); });
+    };
+  });
+};
+
+// ================= 知识库管理 =================
+function renderShowList(){
+  document.getElementById('showList').innerHTML = shows.map((s,i)=>
+    `<div class="kb-item"><span class="del" data-i="${i}">删除</span>
+      <div class="name">${s.name}</div>
+      <div class="meta">${s.platform||'—'} · ${s.type||'—'} · ${s.cast||'—'} · ${s.feature||'—'}</div></div>`
+  ).join('') || '<p style="color:#999;font-size:13px;">暂无综艺，请在下方新增</p>';
+  document.querySelectorAll('#showList .del').forEach(b=>{
+    b.onclick = ()=>{ shows.splice(parseInt(b.dataset.i,10),1); save('shows',shows); renderShowList(); };
+  });
+}
+function renderStyleList(){
+  const baseName = {host:'主持人',redv:'红V',bluev:'蓝V',suren:'素人'};
+  document.getElementById('styleList').innerHTML = styles.map((s,i)=>
+    `<div class="kb-item"><span class="del" data-i="${i}">删除</span>
+      <div class="name">${s.name} <span style="font-weight:400;color:#999;">（基础语气：${baseName[s.base]}）</span></div>
+      <div class="meta">${s.desc} · 示例：${s.example}</div></div>`
+  ).join('');
+  document.querySelectorAll('#styleList .del').forEach(b=>{
+    b.onclick = ()=>{ styles.splice(parseInt(b.dataset.i,10),1); save('styles',styles); renderStyleList(); renderDirections(); };
+  });
+}
+
+document.getElementById('addShow').onclick = ()=>{
+  const name = document.getElementById('newShowName').value.trim();
+  if(!name){ alert('请填写综艺名称'); return; }
+  shows.push({
+    name,
+    platform: document.getElementById('newShowPlatform').value.trim(),
+    type: document.getElementById('newShowType').value.trim(),
+    cast: document.getElementById('newShowCast').value.trim(),
+    feature: document.getElementById('newShowFeature').value.trim()
+  });
+  save('shows',shows); renderShowList();
+  ['newShowName','newShowPlatform','newShowType','newShowCast','newShowFeature'].forEach(id=>document.getElementById(id).value='');
+};
+
+document.getElementById('addStyle').onclick = ()=>{
+  const name = document.getElementById('newStyleName').value.trim();
+  if(!name){ alert('请填写人设名称'); return; }
+  styles.push({
+    id: 's'+Date.now(),
+    name,
+    desc: document.getElementById('newStyleDesc').value.trim() || '自定义人设',
+    base: document.getElementById('newStyleBase').value,
+    example: document.getElementById('newStyleExample').value.trim() || '自定义示例'
+  });
+  save('styles',styles); renderStyleList(); renderDirections();
+  ['newStyleName','newStyleDesc','newStyleExample'].forEach(id=>document.getElementById(id).value='');
+};
+
+// 初始化渲染
+renderDirections();
+renderShowList();
+renderStyleList();
+</script>
+</body>
+</html>
